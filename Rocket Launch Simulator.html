@@ -1,0 +1,776 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Rocket Launch Simulator</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            padding: 30px 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #080808;
+            color: #ffffff;
+        }
+
+        .container {
+            width: min(100%, 950px);
+            padding: 25px;
+            background: #151515;
+            border: 1px solid #303030;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            margin-bottom: 25px;
+            text-align: center;
+            color: #999999;
+            font-size: 14px;
+        }
+
+        .simulation-area {
+            position: relative;
+            height: 350px;
+            overflow: hidden;
+            background: linear-gradient(#071426, #102b47 75%, #253c45);
+            border: 1px solid #34485c;
+            border-radius: 14px;
+        }
+
+        .stars {
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(white 1px, transparent 1px),
+                radial-gradient(#a9c8e8 1px, transparent 1px);
+            background-size: 75px 75px, 110px 110px;
+            background-position: 10px 15px, 45px 35px;
+            opacity: 0.5;
+        }
+
+        .altitude-label {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: #c5d7e9;
+            font-size: 13px;
+            z-index: 2;
+        }
+
+        .rocket {
+            position: absolute;
+            left: 50%;
+            bottom: 25px;
+            width: 30px;
+            height: 75px;
+            transform: translateX(-50%);
+            transition: bottom 0.1s linear;
+            z-index: 3;
+        }
+
+        .rocket-body {
+            position: absolute;
+            bottom: 12px;
+            left: 5px;
+            width: 20px;
+            height: 48px;
+            background: linear-gradient(90deg, #b7c5d1, #ffffff, #a6b4c2);
+            border-radius: 50% 50% 20% 20%;
+        }
+
+        .rocket-nose {
+            position: absolute;
+            top: 0;
+            left: 5px;
+            width: 20px;
+            height: 22px;
+            background: #ff5252;
+            clip-path: polygon(50% 0, 100% 100%, 0 100%);
+        }
+
+        .rocket-fin {
+            position: absolute;
+            bottom: 10px;
+            width: 10px;
+            height: 20px;
+            background: #ff5252;
+        }
+
+        .fin-left {
+            left: 0;
+            clip-path: polygon(100% 0, 100% 100%, 0 100%);
+        }
+
+        .fin-right {
+            right: 0;
+            clip-path: polygon(0 0, 100% 100%, 0 100%);
+        }
+
+        .flame {
+            position: absolute;
+            bottom: -12px;
+            left: 9px;
+            width: 12px;
+            height: 22px;
+            background: linear-gradient(#fff176, #ff9800, #ff3d00);
+            clip-path: polygon(20% 0, 80% 0, 100% 65%, 50% 100%, 0 65%);
+            animation: flicker 0.15s infinite alternate;
+        }
+
+        .flame.hidden {
+            display: none;
+        }
+
+        @keyframes flicker {
+            from {
+                height: 17px;
+            }
+
+            to {
+                height: 25px;
+            }
+        }
+
+        .ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 25px;
+            background: linear-gradient(#456b49, #243d2a);
+        }
+
+        .ground::before {
+            content: "";
+            position: absolute;
+            top: -5px;
+            width: 100%;
+            height: 8px;
+            background: #668e58;
+            border-radius: 50%;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            padding: 15px 10px;
+            text-align: center;
+            background: #202020;
+            border: 1px solid #333333;
+            border-radius: 12px;
+        }
+
+        .stat-card p {
+            margin-bottom: 8px;
+            color: #999999;
+            font-size: 12px;
+        }
+
+        .stat-card h2 {
+            font-size: 21px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .control-group {
+            padding: 15px;
+            background: #202020;
+            border: 1px solid #333333;
+            border-radius: 12px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .control-group label span {
+            color: #68c8ff;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #35aaff;
+            cursor: pointer;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        button {
+            min-width: 125px;
+            padding: 13px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .launch-btn {
+            background: #1688e8;
+            color: white;
+        }
+
+        .launch-btn:hover {
+            background: #0871c9;
+        }
+
+        .reset-btn {
+            background: #333333;
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background: #484848;
+        }
+
+        .chart-container {
+            margin-top: 25px;
+            padding: 18px;
+            background: #202020;
+            border: 1px solid #333333;
+            border-radius: 12px;
+        }
+
+        .chart-container h2 {
+            margin-bottom: 15px;
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+        canvas {
+            width: 100%;
+            height: 200px;
+            display: block;
+        }
+
+        .status {
+            margin-top: 18px;
+            text-align: center;
+            color: #68c8ff;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 18px;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            .simulation-area {
+                height: 300px;
+            }
+
+            h1 {
+                font-size: 23px;
+            }
+
+            .buttons {
+                flex-wrap: wrap;
+            }
+
+            button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="container">
+
+        <h1>Rocket Launch Simulator</h1>
+
+        <section class="simulation-area">
+
+            <div class="stars"></div>
+
+            <div class="altitude-label">
+                ALTITUDE: <span id="sceneAltitude">0 m</span>
+            </div>
+
+            <div class="rocket" id="rocket">
+
+                <div class="rocket-nose"></div>
+                <div class="rocket-body"></div>
+                <div class="rocket-fin fin-left"></div>
+                <div class="rocket-fin fin-right"></div>
+                <div class="flame" id="flame"></div>
+
+            </div>
+
+            <div class="ground"></div>
+
+        </section>
+
+        <section class="stats">
+
+            <div class="stat-card">
+                <p>Altitude</p>
+                <h2 id="altitude">0 m</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Velocity</p>
+                <h2 id="velocity">0 m/s</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Fuel Remaining</p>
+                <h2 id="fuel">100%</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Time</p>
+                <h2 id="time">0.0 s</h2>
+            </div>
+
+        </section>
+
+        <section class="controls">
+
+            <div class="control-group">
+                <label>
+                    Engine Thrust
+                    <span id="thrustValue">25000 N</span>
+                </label>
+
+                <input type="range" id="thrust" min="10000" max="50000" step="1000" value="25000">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Initial Fuel
+                    <span id="fuelValue">100 kg</span>
+                </label>
+
+                <input type="range" id="initialFuel" min="20" max="200" step="5" value="100">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Rocket Dry Mass
+                    <span id="massValue">500 kg</span>
+                </label>
+
+                <input type="range" id="dryMass" min="100" max="1000" step="50" value="500">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Fuel Consumption
+                    <span id="consumptionValue">5 kg/s</span>
+                </label>
+
+                <input type="range" id="consumption" min="1" max="15" step="0.5" value="5">
+            </div>
+
+        </section>
+
+        <div class="buttons">
+
+            <button class="launch-btn" id="launchBtn" onclick="launchRocket()">
+                Launch Rocket
+            </button>
+
+            <button class="reset-btn" onclick="resetSimulation()">
+                Reset
+            </button>
+
+        </div>
+
+        <div class="chart-container">
+
+            <h2>Altitude Over Time</h2>
+
+            <canvas id="altitudeChart"></canvas>
+
+        </div>
+
+        <p class="status" id="status">Ready for launch</p>
+
+    </main>
+
+    <script>
+        const rocket = document.getElementById("rocket");
+        const flame = document.getElementById("flame");
+
+        const altitudeElement = document.getElementById("altitude");
+        const velocityElement = document.getElementById("velocity");
+        const fuelElement = document.getElementById("fuel");
+        const timeElement = document.getElementById("time");
+        const sceneAltitudeElement = document.getElementById("sceneAltitude");
+
+        const thrustInput = document.getElementById("thrust");
+        const fuelInput = document.getElementById("initialFuel");
+        const massInput = document.getElementById("dryMass");
+        const consumptionInput = document.getElementById("consumption");
+
+        const chart = document.getElementById("altitudeChart");
+        const ctx = chart.getContext("2d");
+
+        const statusElement = document.getElementById("status");
+        const launchBtn = document.getElementById("launchBtn");
+
+        const gravity = 9.81;
+
+        let altitude = 0;
+        let velocity = 0;
+        let fuel = 100;
+        let time = 0;
+
+        let running = false;
+        let animationFrame;
+        let lastFrameTime = 0;
+
+        let maxAltitude = 0;
+        let altitudeData = [];
+
+        let sceneMaxAltitude = 1000;
+
+        function updateControlValues() {
+            document.getElementById("thrustValue").textContent =
+                Number(thrustInput.value).toLocaleString() + " N";
+
+            document.getElementById("fuelValue").textContent =
+                fuelInput.value + " kg";
+
+            document.getElementById("massValue").textContent =
+                massInput.value + " kg";
+
+            document.getElementById("consumptionValue").textContent =
+                consumptionInput.value + " kg/s";
+        }
+
+        function updateDisplay() {
+            altitudeElement.textContent =
+                Math.max(0, altitude).toFixed(1) + " m";
+
+            velocityElement.textContent =
+                velocity.toFixed(1) + " m/s";
+
+            fuelElement.textContent =
+                (fuel / Number(fuelInput.value) * 100).toFixed(1) + "%";
+
+            timeElement.textContent =
+                time.toFixed(1) + " s";
+
+            sceneAltitudeElement.textContent =
+                Math.max(0, altitude).toFixed(0) + " m";
+        }
+
+        function updateRocketPosition() {
+            const maxHeight = 240;
+
+            const rocketHeight =
+                Math.min((altitude / sceneMaxAltitude) * maxHeight, maxHeight);
+
+            rocket.style.bottom = (25 + rocketHeight) + "px";
+        }
+
+        function launchRocket() {
+            if (running) {
+                return;
+            }
+
+            if (altitude === 0 && velocity === 0 && fuel === 0) {
+                resetSimulation();
+            }
+
+            if (altitude > 0 || velocity !== 0) {
+                statusElement.textContent = "Reset the simulation before relaunching";
+                return;
+            }
+
+            fuel = Number(fuelInput.value);
+
+            running = true;
+            lastFrameTime = 0;
+
+            flame.classList.remove("hidden");
+
+            launchBtn.disabled = true;
+            launchBtn.style.opacity = "0.5";
+
+            statusElement.textContent = "Rocket launching...";
+
+            animationFrame = requestAnimationFrame(simulate);
+        }
+
+        function simulate(timestamp) {
+            if (!running) {
+                return;
+            }
+
+            if (lastFrameTime === 0) {
+                lastFrameTime = timestamp;
+            }
+
+            const deltaTime = Math.min((timestamp - lastFrameTime) / 1000, 0.05);
+
+            lastFrameTime = timestamp;
+
+            const thrust = Number(thrustInput.value);
+            const dryMass = Number(massInput.value);
+            const consumption = Number(consumptionInput.value);
+
+            const previousFuel = fuel;
+
+            if (fuel > 0) {
+                fuel = Math.max(0, fuel - consumption * deltaTime);
+            }
+
+            const currentMass = dryMass + fuel;
+
+            const effectiveThrust = previousFuel > 0 ? thrust : 0;
+
+            const acceleration =
+                (effectiveThrust / currentMass) - gravity;
+
+            velocity += acceleration * deltaTime;
+
+            altitude += velocity * deltaTime;
+
+            if (altitude <= 0 && time > 0) {
+                altitude = 0;
+                velocity = 0;
+                stopSimulation("Rocket has landed");
+                return;
+            }
+
+            time += deltaTime;
+
+            maxAltitude = Math.max(maxAltitude, altitude);
+
+            altitudeData.push({
+                time: time,
+                altitude: altitude
+            });
+
+            updateDisplay();
+            updateRocketPosition();
+            drawChart();
+
+            if (fuel <= 0 && velocity <= 0) {
+                stopSimulation("Fuel exhausted. Rocket descending.");
+                return;
+            }
+
+            if (time >= 300) {
+                stopSimulation("Simulation time limit reached");
+                return;
+            }
+
+            animationFrame = requestAnimationFrame(simulate);
+        }
+
+        function stopSimulation(message) {
+            running = false;
+
+            cancelAnimationFrame(animationFrame);
+
+            flame.classList.add("hidden");
+
+            launchBtn.disabled = false;
+            launchBtn.style.opacity = "1";
+
+            statusElement.textContent = message;
+        }
+
+        function resetSimulation() {
+            running = false;
+
+            cancelAnimationFrame(animationFrame);
+
+            altitude = 0;
+            velocity = 0;
+            fuel = Number(fuelInput.value);
+            time = 0;
+
+            maxAltitude = 0;
+            altitudeData = [];
+
+            sceneMaxAltitude = 1000;
+
+            lastFrameTime = 0;
+
+            rocket.style.bottom = "25px";
+
+            flame.classList.add("hidden");
+
+            launchBtn.disabled = false;
+            launchBtn.style.opacity = "1";
+
+            statusElement.textContent = "Ready for launch";
+
+            updateDisplay();
+            drawChart();
+        }
+
+        function drawChart() {
+            const width = chart.width;
+            const height = chart.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const padding = 35;
+
+            const graphWidth = width - padding * 2;
+            const graphHeight = height - padding * 2;
+
+            const maxTime = Math.max(time, 10);
+            const maxHeight = Math.max(maxAltitude, 100);
+
+            ctx.strokeStyle = "#454545";
+            ctx.lineWidth = 1;
+
+            ctx.beginPath();
+
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (graphHeight / 4) * i;
+
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+            }
+
+            ctx.stroke();
+
+            ctx.fillStyle = "#aaaaaa";
+            ctx.font = "11px Arial";
+            ctx.textAlign = "center";
+
+            ctx.fillText("Time (s)", width / 2, height - 5);
+
+            ctx.save();
+
+            ctx.translate(12, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText("Altitude (m)", 0, 0);
+
+            ctx.restore();
+
+            ctx.textAlign = "right";
+
+            for (let i = 0; i <= 4; i++) {
+                const value = maxHeight * (1 - i / 4);
+
+                const y = padding + (graphHeight / 4) * i;
+
+                ctx.fillText(value.toFixed(0), padding - 7, y + 4);
+            }
+
+            ctx.textAlign = "center";
+
+            ctx.fillText("0", padding, height - 17);
+            ctx.fillText(maxTime.toFixed(0), width - padding, height - 17);
+
+            if (altitudeData.length < 2) {
+                return;
+            }
+
+            ctx.strokeStyle = "#36b9ff";
+            ctx.lineWidth = 2.5;
+            ctx.lineJoin = "round";
+
+            ctx.beginPath();
+
+            altitudeData.forEach((point, index) => {
+                const x = padding + (point.time / maxTime) * graphWidth;
+
+                const y = padding +
+                    graphHeight -
+                    (point.altitude / maxHeight) * graphHeight;
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.stroke();
+        }
+
+        function resizeChart() {
+            const rect = chart.getBoundingClientRect();
+
+            const pixelRatio = window.devicePixelRatio || 1;
+
+            chart.width = rect.width * pixelRatio;
+            chart.height = rect.height * pixelRatio;
+
+            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+            chart.width = rect.width;
+            chart.height = rect.height;
+
+            drawChart();
+        }
+
+        thrustInput.addEventListener("input", updateControlValues);
+        fuelInput.addEventListener("input", updateControlValues);
+        massInput.addEventListener("input", updateControlValues);
+        consumptionInput.addEventListener("input", updateControlValues);
+
+        window.addEventListener("resize", resizeChart);
+
+        updateControlValues();
+        updateDisplay();
+        resizeChart();
+
+    </script>
+
+</body>
+
+</html>
